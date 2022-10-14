@@ -1,0 +1,80 @@
+Deduper Pseudocode
+
+11 October 2022
+
+The Problem:
+    Within a SAM file of uniquely mapped reads, there is no way to tell if there are PCR duplicates
+    that misrepresent the expression levels of a certain gene. The number of identitcal reads that map to a feature may be a result of an 
+    error in PCR amplification. This can make it look like certain genes are under or over-expressed when they are not.
+
+GOAL:
+    Output a SAM file with a single read mapping to a given position, removing all duplicates caused by PCR
+
+PCR Duplicates and SAM format
+    same UMI (UMI: SAM-COL1)
+    same left-most alignment position (POS: SAM-COL4)
+    same chromosome (RNAME: SAM-COL3)
+    same strand (FLAG: SAM-COL2) 
+    same cigar string (CIGAR: SAM-COL6)
+        Accounts for  Soft Clipping
+
+---Pseudocode---
+-Initialize an empty dictionary
+-Open the input SAM file as read only
+-Open Output SAM file as write
+-Separate lines in the input file by new line symbol
+-Separate columns in each input SAM file line by the delimiter, probably tab
+-Read each line and store the information from the following fields in the empty dictionary as keys,
+    Each key in the set will correspond to a single line in the SAM file, it will store:
+    COL1: UMI (QNAME)
+    COL2: Strand (FLAG)
+    COL3: chromosome (RNAME)
+    COL4: Position (POS)
+    COL6: Cigar String (CIGAR)
+-FLAG will be used to determine which strand the read is on using a higher level function, the strand identity (+/-) will be stored as a value ties to the Key-tuple
+-CIGAR and POS will be used in a higher level function to determine Starting Position (S_P), S_P will be stored as the value of the key
+-If the items above are not already stored in the dictionary, they will be written to the output SAM file
+Move to the next line
+If the start position, UMI, Strand, and chromosome of the next line are already within the list, skip this line, add nothing to the dictionary or output file, add to a counter to keep track of duplicates
+If these fields are not in the list then write then to the output SAM file
+Once the script reaches the end of the file close the read and output files
+
+
+-High-Level Functions-
+
+Column Grab (Not sure if this will be a function, more likely will be the body of my code that employs the two functions below)
+    Description:
+        Takes UMI, RNAME, POS, FLAG, and CIGAR columns from a tab separated line (positions 0,1,2,3,5) and stores them as keys in a dicitonary
+    Example:
+        Input: SAM line:
+            NS500451:154:HWKTMBGXX:1:11101:24260:1121:CTGTTCAC	0	2	76814284	36	71M	*	0	0	TCCACCACAATCTTACCATCCTTCCTCCAGACCACATCGCGTTCTTTGTTCAACTCACAGCTCAAGTACAA	6AEEEEEEAEEAEEEEAAEEEEEEEEEAEEAEEAAEE<EEEEEEEEEAEEEEEEEAAEEAAAEAEEAEAE/	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
+    Returns: [NS500451:154:HWKTMBGXX:1:11101:24260:1121:CTGTTCAC,0,2,76814284,71M:""]
+
+Strand Sorter
+    Description:
+        Takes interger value of FLAG (COL2) and uses the bitwise flag to determine if the read is on the +/- strand
+    Example: 
+        COL2 for a given line is 0, if this flag and 16 == 16, rev_comp is true and the read is on the - strand
+    Return:
+        [<KEY>: "-"]
+
+Clip Adjust/ Start Position (S_P) Calculator
+    Description:
+        Takes Position, Strand, and CIGAR string information and adjusts interger value of POS variable to reflect its actual Start Position
+        Will likely use RegEx to find Cigar symbols of interest
+        Must take into account:
+            CIGAR Notation:
+                S (leading) on + strands, will shift S_P left ->
+                S (tailing) on - strands, will shift S_P right <-
+    Example:
+        POS: 16
+        Strand: "+"
+        CIGAR: 2S18M
+        16 +2 -1 = 17
+    Returns: Starting Position as the value associated with the Key-tuple
+        Output: 
+            [<KEY>:"+", 17]
+
+
+
+

@@ -19,7 +19,10 @@ PCR Duplicates and SAM format
         Accounts for  Soft Clipping
 
 ---Pseudocode---
+-Initialize an empty set to hold the 96 UMIs
 -Initialize an empty dictionary
+-Read in UMI file with 96 UMIs
+Loop through the UMI file, storing unique UMIs in a dictionary
 -Open the input SAM file as read only
 -Open Output SAM file as write
 -Separate lines in the input file by new line symbol
@@ -31,6 +34,7 @@ PCR Duplicates and SAM format
     COL3: chromosome (RNAME)
     COL4: Position (POS)
     COL6: Cigar String (CIGAR)
+-Check for the UMI read in the SAM for an UMI in the UMI set, if it is not there, skip to the next line, do not add anything to the SAM dictionary or output SAM file
 -FLAG will be used to determine which strand the read is on using a higher level function, the strand identity (+/-) will be stored as a value ties to the Key-tuple
 -CIGAR and POS will be used in a higher level function to determine Starting Position (S_P), S_P will be stored as the value of the key
 -If the items above are not already stored in the dictionary, they will be written to the output SAM file
